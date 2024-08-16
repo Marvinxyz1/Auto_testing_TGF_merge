@@ -1,80 +1,104 @@
+import os
 import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import Border, Side, Font, PatternFill, Alignment
 
-# File path
-file_path = '/Users/marvin/acn/sw-web-automation/TGF/Test/TGF_01_0014_before_SAP.xlsx'
+# Directory paths
+input_dir = '/Users/marvin/Desktop/py/work/Test/tgf'
+output_dir = '/Users/marvin/Desktop/py/work/Test/tgf_output'
 
-# Read the Excel file and the two sheets
-df1 = pd.read_excel(file_path, sheet_name='1')
-df2 = pd.read_excel(file_path, sheet_name='2')
+# Identify files with similar names and distinguish main and sub
+files = os.listdir(input_dir)
+file_pairs = []
+for f1 in files:
+    for f2 in files:
+        if f1 != f2 and f1.split('_')[2] == f2.split('_')[2]:
+            if 'before' in f1 and 'after' in f2:
+                file_pairs.append((f1, f2))
+            elif 'after' in f1 and 'before' in f2:
+                file_pairs.append((f2, f1))
 
-# Identify common and unique columns
-common_columns = df1.columns.intersection(df2.columns)
-unique_columns_df2 = df2.columns.difference(df1.columns)
+# Process each pair of files
+for main_file, sub_file in file_pairs:
+    main_file_path = os.path.join(input_dir, main_file)
+    sub_file_path = os.path.join(input_dir, sub_file)
 
-# Merge the DataFrames
-merged_df = pd.concat([df1, df2[common_columns]], ignore_index=True)
+    # Read the Excel files and the 'TestData' sheets
+    main_df = pd.read_excel(main_file_path, sheet_name='TestData')
+    sub_df = pd.read_excel(sub_file_path, sheet_name='TestData')
 
-# Add unique columns from df2 to merged_df
-for col in unique_columns_df2:
-    merged_df[col] = df2[col]
+    # Identify common and unique columns
+    common_columns = main_df.columns.intersection(sub_df.columns)
+    unique_columns_sub = sub_df.columns.difference(main_df.columns)
 
-# Remove columns that are completely empty
-merged_df.dropna(axis=1, how='all', inplace=True)
+    # Merge the DataFrames
+    merged_df = pd.concat([main_df, sub_df[common_columns]], ignore_index=True)
 
-# Save the merged DataFrame to a new Excel file
-output_path = '/Users/marvin/Desktop/py/work/Test/merged_output.xlsx'
-merged_df.to_excel(output_path, index=False)
+    # Add unique columns from sub_df to merged_df
+    for col in unique_columns_sub:
+        merged_df[col] = sub_df[col]
 
-# Load the original workbook and the new workbook
-original_wb = load_workbook(file_path)
-original_ws = original_wb['1']
-new_wb = load_workbook(output_path)
-new_ws = new_wb.active
+    # Remove columns that are completely empty
+    merged_df.dropna(axis=1, how='all', inplace=True)
 
-# Define a border style
-thin_border = Border(left=Side(style='thin'), 
-                     right=Side(style='thin'), 
-                     top=Side(style='thin'), 
-                     bottom=Side(style='thin'))
+    # Modify dates to have the month as '08-25'
+    for col in merged_df.columns:
+        if merged_df[col].dtype == 'object':  # Only process string columns
+            merged_df[col] = merged_df[col].apply(lambda x: x[:5] + '08-25' if isinstance(x, str) and x.startswith('2024-') else x)
 
-# Define font, fill, and alignment styles
-yugothic_font = Font(name='游ゴシック')
-header_font = Font(name='游ゴシック', color='FFFFFF')
-header_fill = PatternFill(start_color='000000', end_color='000000', fill_type='solid')
-left_alignment = Alignment(horizontal='left')
+    # Save the merged DataFrame to a new Excel file
+    output_file_name = f'merged_{main_file.split("_")[2]}.xlsx'
+    output_path = os.path.join(output_dir, output_file_name)
+    merged_df.to_excel(output_path, index=False)
 
-# Copy the font and style from the original first sheet to the new sheet
-for row in new_ws.iter_rows(min_row=1, max_row=new_ws.max_row, min_col=1, max_col=new_ws.max_column):
-    for cell in row:
-        original_cell = original_ws[cell.coordinate] if cell.coordinate in original_ws else None
-        if original_cell:
-            cell.font = original_cell.font.copy(name='游ゴシック')
-            cell.alignment = original_cell.alignment.copy(horizontal='left')
-            cell.border = original_cell.border.copy()
-            cell.fill = original_cell.fill.copy()
-        cell.border = thin_border  # Apply the border to all cells
-        cell.font = yugothic_font  # Apply 游ゴシック font to all cells
-        cell.alignment = left_alignment  # Align all text to the left
+    # Load the original workbook and the new workbook
+    original_wb = load_workbook(main_file_path)
+    original_ws = original_wb['TestData']
+    new_wb = load_workbook(output_path)
+    new_ws = new_wb.active
 
-# Apply header styles to the first row
-for cell in new_ws[1]:
-    cell.font = header_font
-    cell.fill = header_fill
+    # Define a border style
+    thin_border = Border(left=Side(style='thin'), 
+                         right=Side(style='thin'), 
+                         top=Side(style='thin'), 
+                         bottom=Side(style='thin'))
 
-# Adjust column widths
-for col in new_ws.columns:
-    max_length = 0
-    column = col[0].column_letter  # Get the column name
-    for cell in col:
-        try:
-            if len(str(cell.value)) > max_length:
-                max_length = len(cell.value)
-        except:
-            pass
-    adjusted_width = (max_length + 2)
-    new_ws.column_dimensions[column].width = adjusted_width
+    # Define font, fill, and alignment styles
+    yugothic_font = Font(name='游ゴシック')
+    header_font = Font(name='游ゴシック', color='FFFFFF')
+    header_fill = PatternFill(start_color='000000', end_color='000000', fill_type='solid')
+    left_alignment = Alignment(horizontal='left')
 
-# Save the adjusted workbook
-new_wb.save(output_path)
+    # Copy the font and style from the original first sheet to the new sheet
+    for row in new_ws.iter_rows(min_row=1, max_row=new_ws.max_row, min_col=1, max_col=new_ws.max_column):
+        for cell in row:
+            original_cell = original_ws[cell.coordinate] if cell.coordinate in original_ws else None
+            if original_cell:
+                cell.font = original_cell.font.copy(name='游ゴシック')
+                cell.alignment = original_cell.alignment.copy(horizontal='left')
+                cell.border = original_cell.border.copy()
+                cell.fill = original_cell.fill.copy()
+            cell.border = thin_border  # Apply the border to all cells
+            cell.font = yugothic_font  # Apply 游ゴシック font to all cells
+            cell.alignment = left_alignment  # Align all text to the left
+
+    # Apply header styles to the first row
+    for cell in new_ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+
+    # Adjust column widths
+    for col in new_ws.columns:
+        max_length = 0
+        column = col[0].column_letter  # Get the column name
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        new_ws.column_dimensions[column].width = adjusted_width
+
+    # Save the adjusted workbook
+    new_wb.save(output_path)
