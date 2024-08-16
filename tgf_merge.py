@@ -46,16 +46,17 @@ for main_file, sub_file in file_pairs:
         if merged_df[col].dtype == 'object':  # Only process string columns
             merged_df[col] = merged_df[col].apply(lambda x: x[:5] + '08-25' if isinstance(x, str) and x.startswith('2024-') else x)
 
-    # Save the merged DataFrame to a new Excel file
+    # Save the merged DataFrame to a new Excel file with sheet name 'TestData'
     output_file_name = f'merged_{main_file.split("_")[2]}.xlsx'
     output_path = os.path.join(output_dir, output_file_name)
-    merged_df.to_excel(output_path, index=False)
+    with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+        merged_df.to_excel(writer, index=False, sheet_name='TestData')
 
     # Load the original workbook and the new workbook
     original_wb = load_workbook(main_file_path)
     original_ws = original_wb['TestData']
     new_wb = load_workbook(output_path)
-    new_ws = new_wb.active
+    new_ws = new_wb['TestData']
 
     # Define a border style
     thin_border = Border(left=Side(style='thin'), 
