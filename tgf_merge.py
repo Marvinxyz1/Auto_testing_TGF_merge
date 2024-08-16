@@ -46,9 +46,12 @@ for main_file, sub_file in file_pairs:
         if merged_df[col].dtype == 'object':  # Only process string columns
             merged_df[col] = merged_df[col].apply(lambda x: x[:5] + '08-25' if isinstance(x, str) and x.startswith('2024-') else x)
 
-    # Save the merged DataFrame to a new Excel file with sheet name 'TestData'
-    output_file_name = f'merged_{main_file.split("_")[2]}.xlsx'
+    # Extract parts for the new file name
+    parts = main_file.split('_')
+    output_file_name = f'TGF_{parts[1]}_{parts[2]}.xlsx'
     output_path = os.path.join(output_dir, output_file_name)
+
+    # Save the merged DataFrame to a new Excel file with sheet name 'TestData'
     with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
         merged_df.to_excel(writer, index=False, sheet_name='TestData')
 
