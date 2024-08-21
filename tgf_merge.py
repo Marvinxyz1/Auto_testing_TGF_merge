@@ -5,8 +5,8 @@ from openpyxl import load_workbook
 from openpyxl.styles import Border, Side, Font, PatternFill, Alignment
 
 # Directory paths
-input_dir = '/Users/marvin/Desktop/py/work/Test/test'
-output_dir = '/Users/marvin/Desktop/py/work/Test/tgf_output'
+input_dir = '/Users/marvin/acn/sw-web-automation/TGF/1'
+output_dir = '/Users/marvin/acn/sw-web-automation/TGF/test_outpu'
 
 # Identify files with similar names and distinguish main and sub
 files = os.listdir(input_dir)
